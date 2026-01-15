@@ -1,52 +1,53 @@
 package com.spring.quizapp.service;
-import com.spring.quizapp.model.*;
+
+import com.spring.quizapp.model.QuizQuestion;
+import com.spring.quizapp.model.QuizSubmitRequest;
 import com.spring.quizapp.repository.QuizRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import java.util.ArrayList;
+
+
 import java.util.List;
 import java.util.Map;
+
+
 @Service
 public class QuizService {
-    private final QuizRepository repository;
-    public QuizService(QuizRepository repository) {
-        this.repository = repository;
-    }
-    public List<QuizQuestionResponse> getQuestions() {
-        List<QuizQuestionResponse> list = new ArrayList<>();
 
-        for (QuizQuestion q : repository.findAll()) {
-            QuizQuestionResponse r = new QuizQuestionResponse();
-            r.setId(q.getId());
-            r.setQuestion(q.getQuestion());
-            r.setOptions(List.of(
-                    q.getOptionA(),
-                    q.getOptionB(),
-                    q.getOptionC(),
-                    q.getOptionD()
-            ));
-            list.add(r);
+    @Autowired
+    private QuizRepository quizRepository;
+
+    // Get all questions (hide correct answers)
+    public List<QuizQuestion> getQuestions() {
+        List<QuizQuestion> questions = quizRepository.getAllQuestions();
+        for (QuizQuestion q : questions) {
+            q.setCorrectOption(null); // hide correct answer
         }
-        return list;
+        return questions;
     }
 
-    public QuizResultResponse submitQuiz(QuizSubmitRequest request) {
+    // Add new question
+    public void addQuestion(QuizQuestion question) {
+        quizRepository.addQuestion(question);
+    }
+
+    // Submit quiz answers
+    public int submitQuiz(QuizSubmitRequest request) {
+        Map<String, String> answers = request.getAnswers();
+        if (answers == null) throw new RuntimeException("Answers cannot be null");
 
         int score = 0;
-        int total = request.getAnswers().size();
+        for (Map.Entry<String, String> entry : answers.entrySet()) {
+            int questionId = Integer.parseInt(entry.getKey());
+            String userAnswer = entry.getValue();
 
-        for (Map.Entry<Integer, String> entry : request.getAnswers().entrySet()) {
-            QuizQuestion q = repository.findById(entry.getKey())
-                    .orElseThrow(() -> new RuntimeException("Invalid Question ID"));
+            QuizQuestion q = quizRepository.getQuestionById(questionId)
+                    .orElseThrow(() -> new RuntimeException("Invalid Question ID: " + questionId));
 
-            if (q.getCorrectOption().equalsIgnoreCase(entry.getValue())) {
+            if (q.getCorrectOption().equalsIgnoreCase(userAnswer)) {
                 score++;
             }
         }
-        repository.saveResult(request.getUsername(), score, total);
-
-        return new QuizResultResponse(score, total);
-    }
-    public void addQuestion(QuizQuestion question) {
-        repository.saveQuestion(question);
+        return score;
     }
 }

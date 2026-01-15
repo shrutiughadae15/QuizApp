@@ -1,4 +1,5 @@
 CREATE DATABASE quizdb;
+
 USE quizdb;
 
 CREATE TABLE quiz_question (
@@ -18,3 +19,7 @@ CREATE TABLE quiz_result (
                              total INT,
                              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Insert a sample question
+INSERT INTO quiz_question (question, option_a, option_b, option_c, option_d, correct_option)
+VALUES ('What does HTML stand for?', 'Hyper Text Markup Language', 'Home Tool Markup Language', 'Hyperlinks and Text Markup Language', 'Hyper Text Machine Language', 'A');

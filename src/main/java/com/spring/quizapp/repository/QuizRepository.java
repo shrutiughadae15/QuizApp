@@ -1,60 +1,61 @@
 package com.spring.quizapp.repository;
-
-
-
 import com.spring.quizapp.model.QuizQuestion;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+
 @Repository
 public class QuizRepository {
 
-    private final JdbcTemplate jdbcTemplate;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
-    public QuizRepository(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-    }
-
-    private final RowMapper<QuizQuestion> rowMapper = (rs, rowNum) -> {
-        QuizQuestion q = new QuizQuestion();
-        q.setId(rs.getInt("id"));
-        q.setQuestion(rs.getString("question"));
-        q.setOptionA(rs.getString("option_a"));
-        q.setOptionB(rs.getString("option_b"));
-        q.setOptionC(rs.getString("option_c"));
-        q.setOptionD(rs.getString("option_d"));
-        q.setCorrectOption(rs.getString("correct_option"));
-        return q;
+    // RowMapper to map DB rows to QuizQuestion objects
+    private RowMapper<QuizQuestion> rowMapper = new RowMapper<>() {
+        @Override
+        public QuizQuestion mapRow(ResultSet rs, int rowNum) throws SQLException {
+            return new QuizQuestion(
+                    rs.getInt("id"),
+                    rs.getString("question"),
+                    rs.getString("option_a"),
+                    rs.getString("option_b"),
+                    rs.getString("option_c"),
+                    rs.getString("option_d"),
+                    rs.getString("correct_option")
+            );
+        }
     };
 
-    public List<QuizQuestion> findAll() {
-        return jdbcTemplate.query("SELECT * FROM quiz_question", rowMapper);
+    // Fetch all questions
+    public List<QuizQuestion> getAllQuestions() {
+        String sql = "SELECT * FROM quiz_question";
+        return jdbcTemplate.query(sql, rowMapper);
     }
 
-    public Optional<QuizQuestion> findById(int id) {
-        List<QuizQuestion> list =
-                jdbcTemplate.query("SELECT * FROM quiz_question WHERE id=?", rowMapper, id);
-        return list.stream().findFirst();
+    // Fetch question by ID
+    public Optional<QuizQuestion> getQuestionById(int id) {
+        String sql = "SELECT * FROM quiz_question WHERE id = ?";
+        List<QuizQuestion> list = jdbcTemplate.query(sql, rowMapper, id);
+        if (list.isEmpty()) return Optional.empty();
+        return Optional.of(list.get(0));
     }
 
-    public void saveQuestion(QuizQuestion q) {
-        jdbcTemplate.update(
-                "INSERT INTO quiz_question(question,option_a,option_b,option_c,option_d,correct_option) VALUES (?,?,?,?,?,?)",
-                q.getQuestion(),
-                q.getOptionA(),
-                q.getOptionB(),
-                q.getOptionC(),
-                q.getOptionD(),
-                q.getCorrectOption()
-        );
-    }
-    public void saveResult(String username, int score, int total) {
-        jdbcTemplate.update(
-                "INSERT INTO quiz_result(username, score, total) VALUES (?,?,?)",
-                username, score, total
+    // Insert new question
+    public int addQuestion(QuizQuestion question) {
+        String sql = "INSERT INTO quiz_question (question, option_a, option_b, option_c, option_d, correct_option) VALUES (?, ?, ?, ?, ?, ?)";
+        return jdbcTemplate.update(sql,
+                question.getQuestion(),
+                question.getOptionA(),
+                question.getOptionB(),
+                question.getOptionC(),
+                question.getOptionD(),
+                question.getCorrectOption()
         );
     }
 }

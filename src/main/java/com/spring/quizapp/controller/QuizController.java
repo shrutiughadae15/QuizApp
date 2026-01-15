@@ -1,34 +1,56 @@
 package com.spring.quizapp.controller;
-import com.spring.quizapp.model.*;
+
+import com.spring.quizapp.model.QuizQuestion;
+import com.spring.quizapp.model.QuizSubmitRequest;
 import com.spring.quizapp.service.QuizService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+
+
 @RestController
 @RequestMapping("/api/quiz")
 public class QuizController {
 
-    private final QuizService service;
+    @Autowired
+    private QuizService quizService;
 
-    public QuizController(QuizService service) {
-        this.service = service;
-    }
-
+    // 1️⃣ Get all questions (without correct answers)
     @GetMapping("/questions")
-    public ResponseEntity<List<QuizQuestionResponse>> getQuestions() {
-        return ResponseEntity.ok(service.getQuestions());
+    public ResponseEntity<List<QuizQuestion>> getQuestions() {
+        List<QuizQuestion> questions = quizService.getQuestions();
+        return ResponseEntity.ok(questions);
     }
 
+    // 2️⃣ Add a new question (Admin API)
     @PostMapping("/question")
-    public ResponseEntity<Void> addQuestion(@RequestBody QuizQuestion question) {
-        service.addQuestion(question);
-        return new ResponseEntity<>(HttpStatus.CREATED);
+    public ResponseEntity<String> addQuestion(@RequestBody QuizQuestion question) {
+        if (question.getQuestion() == null || question.getCorrectOption() == null) {
+            return ResponseEntity.badRequest().body("Question and correct option are required");
+        }
+        quizService.addQuestion(question);
+        return ResponseEntity.status(HttpStatus.CREATED).body("Question added successfully");
     }
 
+    // 3️⃣ Submit quiz answers
     @PostMapping("/submit")
-    public ResponseEntity<QuizResultResponse> submitQuiz(
-            @RequestBody QuizSubmitRequest request) {
-        return ResponseEntity.ok(service.submitQuiz(request));
+    public ResponseEntity<Map<String, Object>> submitQuiz(@RequestBody QuizSubmitRequest request) {
+        if (request.getAnswers() == null || request.getAnswers().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Answers cannot be empty"));
+        }
+
+        int score = quizService.submitQuiz(request);
+        int total = request.getAnswers().size();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("score", score);
+        response.put("total", total);
+
+        return ResponseEntity.ok(response);
     }
 }
